@@ -370,14 +370,17 @@ function populateSavedGames() {
   });
 }
 
+// ---------------------------------------------------------------
+// Modal Functions - updated for Tailwind UI
+// ---------------------------------------------------------------
 function showDeleteModal() {
   const modal = document.getElementById("deleteModal") as HTMLElement;
-  modal.style.display = "block";
+  modal.classList.remove("hidden");
 }
 
 function hideDeleteModal() {
   const modal = document.getElementById("deleteModal") as HTMLElement;
-  modal.style.display = "none";
+  modal.classList.add("hidden");
 }
 
 (document.getElementById("confirmDelete") as HTMLButtonElement).addEventListener("click", () => {

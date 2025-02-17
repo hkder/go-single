@@ -317,11 +317,11 @@ function populateSavedGames() {
 }
 function showDeleteModal() {
     const modal = document.getElementById("deleteModal");
-    modal.style.display = "block";
+    modal.classList.remove("hidden");
 }
 function hideDeleteModal() {
     const modal = document.getElementById("deleteModal");
-    modal.style.display = "none";
+    modal.classList.add("hidden");
 }
 document.getElementById("confirmDelete").addEventListener("click", () => {
     if (savedGameIndexToDelete !== null) {

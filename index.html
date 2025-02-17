@@ -4,108 +4,94 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Go Game</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body {
-      margin: 0;
-      padding: 0;
-      display: flex;
-      height: 100vh;
-      font-family: sans-serif;
+    /* Modern, thin scrollbar for WebKit */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
     }
-    #leftPanel, #rightPanel {
-      width: 200px;
-      padding: 10px;
-      box-sizing: border-box;
-      background: #f0f0f0;
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 8px;
     }
-    #middlePanel {
-      flex: 1;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: #fff;
+    ::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 8px;
     }
-    canvas {
-      border: 1px solid #000;
+    ::-webkit-scrollbar-thumb:hover {
+      background: #a8a8a8;
     }
-    h2 {
-      margin-top: 0;
-    }
-    select, button {
-      width: 100%;
-      margin-bottom: 10px;
-      font-size: 1rem;
-    }
-    /* Styling for the saved games list */
-    #savedGames {
-      overflow-y: auto;
-      max-height: 200px;
-    }
-    /* Modal container */
-    .modal {
-      display: none; /* Hidden by default */
-      position: fixed;
-      z-index: 100;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      overflow: auto;
-      background-color: rgba(0,0,0,0.4);
-    }
-    /* Modal content box */
-    .modal-content {
-      background: #fff;
-      margin: 15% auto;
-      padding: 20px;
-      border-radius: 10px;
-      width: 80%;
-      max-width: 300px;
-      text-align: center;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-    }
-    .modal-content button {
-      margin: 10px;
-      padding: 8px 12px;
-      font-size: 1rem;
-      cursor: pointer;
+    /* Firefox scrollbar styling */
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: #c1c1c1 #f1f1f1;
     }
   </style>
 </head>
-<body>
-  <div id="leftPanel">
-    <h2>Board Size</h2>
-    <select id="boardSizeSelect">
-      <option value="9">9x9</option>
-      <option value="13">13x13</option>
-      <option value="19" selected>19x19</option>
-    </select>
-    <button id="saveGameBtn">Save Game</button>
-    <button id="clearGameBtn">Clear Game</button>
-    <button id="exportGameBtn">Export Game</button>
-    <input type="file" id="importGameInput" accept="application/json" style="display: block; width: 100%; margin-top: 10px;" />
-    <div id="savedGamesWrapper">
-      <h2>Saved Games</h2>
-      <div id="savedGames"></div>
+<body class="bg-gray-50 h-screen">
+  <!-- Grid layout with five columns: left panel, left spacer, fixed middle board (800x800), right spacer, right panel -->
+  <div id="gridContainer" class="grid h-full" 
+       style="grid-template-columns: 300px 1fr 800px 1fr 250px;">
+    
+    <!-- Left Panel: Board Settings -->
+    <div id="leftPanel" class="bg-blue-50 p-4 border-r border-gray-200 overflow-y-auto min-h-0">
+      <h2 class="text-xl font-semibold mb-4">Board Settings</h2>
+      <div class="mb-4">
+        <label for="boardSizeSelect" class="block text-sm font-medium text-gray-700 mb-1">Board Size</label>
+        <select id="boardSizeSelect" class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="9">9x9</option>
+          <option value="13">13x13</option>
+          <option value="19" selected>19x19</option>
+        </select>
+      </div>
+      <div class="space-y-2 mb-4">
+        <button id="saveGameBtn" class="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600">Save Game</button>
+        <button id="clearGameBtn" class="w-full bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600">Clear Game</button>
+        <button id="exportGameBtn" class="w-full bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600">Export Game</button>
+        <input type="file" id="importGameInput" accept="application/json" class="w-full p-2 border border-gray-300 rounded" />
+      </div>
+      <div id="savedGamesWrapper">
+        <h2 class="text-xl font-semibold mb-2">Saved Games</h2>
+        <div id="savedGames" class="space-y-2 max-h-60 overflow-y-auto"></div>
+      </div>
+    </div>
+    
+    <!-- Left Spacer -->
+    <div></div>
+    
+    <!-- Middle Panel: Go Board (fixed size 800x800, centered) -->
+    <div id="middlePanel" class="flex justify-center items-center">
+      <canvas id="goCanvas" width="800" height="800" class="shadow-lg rounded bg-yellow-50"></canvas>
+    </div>
+    
+    <!-- Right Spacer -->
+    <div></div>
+    
+    <!-- Right Panel: Scoreboard -->
+    <div id="rightPanel" class="bg-blue-50 p-4 border-l border-gray-200 overflow-y-auto min-h-0">
+      <h2 class="text-xl font-semibold mb-4">Scoreboard</h2>
+      <div class="mb-2 text-lg">
+        <span class="font-medium">Black:</span> <span id="blackScore">0</span>
+      </div>
+      <div class="mb-4 text-lg">
+        <span class="font-medium">White:</span> <span id="whiteScore">0</span>
+      </div>
+      <h2 class="text-xl font-semibold mb-4">Current Turn</h2>
+      <div id="turnIndicator" class="mb-4 text-lg text-blue-700 font-semibold">Black</div>
+      <button id="toggleOrderBtn" class="w-full bg-purple-500 text-white py-2 px-4 rounded hover:bg-purple-600">Toggle Stone Order</button>
     </div>
   </div>
-  <div id="middlePanel">
-    <canvas id="goCanvas" width="600" height="600"></canvas>
-  </div>
-  <div id="rightPanel">
-    <h2>Scoreboard</h2>
-    <div>Black: <span id="blackScore">0</span></div>
-    <div>White: <span id="whiteScore">0</span></div>
-    <h2>Current Turn</h2>
-    <div id="turnIndicator">Black</div>
-    <button id="toggleOrderBtn">Toggle Stone Order</button>
-  </div>
+
   <!-- Modal for deleting a saved game -->
-  <div id="deleteModal" class="modal">
-    <div class="modal-content">
-      <p>Are you sure you want to delete this saved game?</p>
-      <button id="confirmDelete">Delete</button>
-      <button id="cancelDelete">Cancel</button>
+  <div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded shadow-lg p-6 w-80">
+      <p class="text-lg mb-4">Are you sure you want to delete this saved game?</p>
+      <div class="flex justify-around">
+        <button id="confirmDelete" class="bg-red-500 text-white py-1 px-4 rounded hover:bg-red-600">Delete</button>
+        <button id="cancelDelete" class="bg-gray-500 text-white py-1 px-4 rounded hover:bg-gray-600">Cancel</button>
+      </div>
     </div>
   </div>
   <script src="main.js"></script>
