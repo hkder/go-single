@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "build": "tsc",
-    "server": "node server.js"
+    "server": "node ./public/server.js"
   },
   "dependencies": {
     "express": "^4.21.2",

@@ -1,14 +1,22 @@
-const express = require('express');
-const app = express();
-const http = require('http').createServer(app);
-const io = require('socket.io')(http);
+import express from 'express';
+import * as http from 'http';
+import { Server, Socket } from 'socket.io';
 
-let users = {};
+const app = express();
+const httpServer = http.createServer(app);
+const io = new Server(httpServer);
+
+// Define a type for our user mapping.
+interface Users {
+  [socketId: string]: string;
+}
+
+const users: Users = {};
 
 // Serve static files from the "public" folder.
 app.use(express.static('public'));
 
-io.on('connection', (socket) => {
+io.on('connection', (socket: Socket) => {
   console.log('New client connected: ' + socket.id);
   // Assign a temporary username.
   const username = 'User_' + socket.id.substring(0, 4);
@@ -19,8 +27,8 @@ io.on('connection', (socket) => {
   // Broadcast updated user list to all clients.
   io.emit('updateUsers', Object.values(users));
 
-  // Handle stone moves as before.
-  socket.on('stoneMove', (data) => {
+  // Handle stone moves.
+  socket.on('stoneMove', (data: any) => {
     console.log('Received stone move:', data);
     // Broadcast the stone move to all other clients.
     socket.broadcast.emit('stoneMove', data);
@@ -35,6 +43,6 @@ io.on('connection', (socket) => {
 });
 
 const port = 3000;
-http.listen(port, () => {
+httpServer.listen(port, () => {
   console.log(`Server listening on port ${port}`);
 });
