@@ -1,6 +1,16 @@
 {
+  "name": "go-game",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "tsc",
+    "server": "node server.js"
+  },
   "dependencies": {
     "express": "^4.21.2",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
   }
 }

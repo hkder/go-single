@@ -4,11 +4,12 @@
     "module": "NodeNext",
     "strict": true,
     "sourceMap": true,
-    "outDir": "./",
+    "rootDir": "./src",
+    "outDir": "./public",
     "noImplicitAny": true,
     "removeComments": true,
     "moduleResolution": "nodenext"
   },
-  "include": ["**/*.ts"],
+  "include": ["src/**/*.ts"],
   "exclude": ["node_modules"]
 }
