@@ -248,52 +248,85 @@ function removeGroup(i: number, j: number, stone: Stone): number {
   return removedCount;
 }
 
-// Handle canvas clicks.
-// Only allow removal if the stone is the last one placed.
+// ---- SOCKET.IO MULTIPLAYER INTEGRATION ----
+// Declare the global "io" provided by the Socket.IO client script.
+declare var io: any;
+
+// Connect to the Socket.IO server (assumes same host/port as served page).
+const socket = io();
+
+// Sample function to broadcast a stone move.
+function broadcastStoneMove(i: number, j: number, stone: Stone) {
+  // Prepare move data.
+  const moveData = { 
+    i, 
+    j, 
+    stone, 
+    // Toggle the turn for broadcast.
+    currentPlayer: stone === Stone.Black ? Stone.White : Stone.Black 
+  };
+  socket.emit('stoneMove', moveData);
+}
+
+// Listen for stone moves broadcasted from other clients.
+socket.on('stoneMove', (moveData: { i: number; j: number; stone: Stone; currentPlayer: Stone }) => {
+  console.log("Received move via network:", moveData);
+  // If the board cell is empty, apply the move.
+  if (board[moveData.i][moveData.j] === null) {
+    board[moveData.i][moveData.j] = moveData.stone;
+    moveHistory.push({ i: moveData.i, j: moveData.j, stone: moveData.stone });
+    currentPlayer = moveData.currentPlayer;
+    drawBoard();
+    updateScoreBoard();
+  }
+});
+
+// Listen for our temporary username.
+socket.on('yourUsername', (username: string) => {
+  const myUsernameEl = document.getElementById("myUsername");
+  if(myUsernameEl) {
+    myUsernameEl.textContent = username;
+  }
+});
+
+// Listen for updates to the connected users list.
+socket.on('updateUsers', (userList: string[]) => {
+  const userListEl = document.getElementById("userList");
+  if (userListEl) {
+    userListEl.innerHTML = "";
+    userList.forEach((username: string) => {
+      const li = document.createElement("li");
+      li.textContent = username;
+      userListEl.appendChild(li);
+    });
+  }
+});
+
+// Example: Adding a click handler to the canvas to place a stone locally
 canvas.addEventListener("click", (event: MouseEvent) => {
   const rect = canvas.getBoundingClientRect();
-  const margin = getMargin();
-  const cellSize = (canvas.width - 2 * margin) / (boardSize - 1);
   const x = event.clientX - rect.left;
   const y = event.clientY - rect.top;
+  const margin = getMargin();
+  const cellSize = (canvas.width - 2 * margin) / (boardSize - 1);
+
+  // Calculate board coordinate indices (round to nearest integer).
   const i = Math.round((x - margin) / cellSize);
   const j = Math.round((y - margin) / cellSize);
 
-  if (i < 0 || i >= boardSize || j < 0 || j >= boardSize) {
-    return;
-  }
+  // Ensure the click is within board bounds.
+  if (i < 0 || i >= boardSize || j < 0 || j >= boardSize) return;
 
-  // if there is already a stone, only allow removal if it is the last placed
-  if (board[i][j] !== null) {
-    if (moveHistory.length > 0) {
-      const lastMove = moveHistory[moveHistory.length - 1];
-      if (lastMove.i === i && lastMove.j === j) {
-        board[i][j] = null;
-        moveHistory.pop();
-        currentPlayer = lastMove.stone;
-        drawBoard();
-        updateScoreBoard();
-      } else {
-        alert("Only the last placed stone can be removed.");
-      }
-    }
-    return;
-  }
-
-  // Place a stone and process the move:
-  board[i][j] = currentPlayer;
-  captureStones(i, j, currentPlayer);
-  if (!groupHasLiberty(i, j, currentPlayer)) {
-    board[i][j] = null;
-    alert("Suicide move is not allowed!");
+  // Only place a stone if the cell is empty.
+  if (board[i][j] === null) {
+    board[i][j] = currentPlayer;
+    moveHistory.push({ i, j, stone: currentPlayer });
+    // Toggle the turn.
+    currentPlayer = currentPlayer === Stone.Black ? Stone.White : Stone.Black;
     drawBoard();
     updateScoreBoard();
-    return;
+    broadcastStoneMove(i, j, board[i][j]!);
   }
-  moveHistory.push({ i, j, stone: currentPlayer });
-  currentPlayer = currentPlayer === Stone.Black ? Stone.White : Stone.Black;
-  drawBoard();
-  updateScoreBoard();
 });
 
 // When the board size changes, save the current state and restore a previous state (if any).

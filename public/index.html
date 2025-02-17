@@ -32,8 +32,7 @@
 </head>
 <body class="bg-gray-50 h-screen">
   <!-- Grid layout with five columns: left panel, left spacer, fixed middle board (800x800), right spacer, right panel -->
-  <div id="gridContainer" class="grid h-full" 
-       style="grid-template-columns: 300px 1fr 800px 1fr 250px;">
+  <div id="gridContainer" class="grid h-full w-full" style="grid-template-columns: 300px 1fr 800px 1fr 250px;">
     
     <!-- Left Panel: Board Settings -->
     <div id="leftPanel" class="bg-blue-50 p-4 border-r border-gray-200 overflow-y-auto min-h-0">
@@ -69,7 +68,7 @@
     <!-- Right Spacer -->
     <div></div>
     
-    <!-- Right Panel: Scoreboard -->
+    <!-- Right Panel: Scoreboard and Connected Users -->
     <div id="rightPanel" class="bg-blue-50 p-4 border-l border-gray-200 overflow-y-auto min-h-0">
       <h2 class="text-xl font-semibold mb-4">Scoreboard</h2>
       <div class="mb-2 text-lg">
@@ -81,6 +80,11 @@
       <h2 class="text-xl font-semibold mb-4">Current Turn</h2>
       <div id="turnIndicator" class="mb-4 text-lg text-blue-700 font-semibold">Black</div>
       <button id="toggleOrderBtn" class="w-full bg-purple-500 text-white py-2 px-4 rounded hover:bg-purple-600">Toggle Stone Order</button>
+      <div class="mt-4 p-2 bg-gray-100 rounded">
+        <strong>Your Username: </strong><span id="myUsername"></span>
+      </div>
+      <h2 class="text-xl font-semibold mt-8 mb-4">Connected Users</h2>
+      <ul id="userList" class="space-y-2"></ul>
     </div>
   </div>
 
@@ -94,6 +98,7 @@
       </div>
     </div>
   </div>
+  <script src="/socket.io/socket.io.js"></script>
   <script src="main.js"></script>
 </body>
 </html>
