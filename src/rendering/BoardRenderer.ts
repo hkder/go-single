@@ -106,6 +106,7 @@ export class BoardRenderer {
         { i: 3, j: 9 },
         { i: 3, j: 15 },
         { i: 9, j: 3 },
+        { i: 9, j: 9 },
         { i: 9, j: 15 },
         { i: 15, j: 3 },
         { i: 15, j: 9 },
@@ -117,13 +118,6 @@ export class BoardRenderer {
         { i: 3, j: 9 },
         { i: 9, j: 3 },
         { i: 9, j: 9 },
-      ];
-    } else if (boardSize === 9) {
-      points = [
-        { i: 2, j: 2 },
-        { i: 2, j: 6 },
-        { i: 6, j: 2 },
-        { i: 6, j: 6 },
       ];
     }
 
