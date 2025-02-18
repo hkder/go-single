@@ -1,7 +1,8 @@
+// src/networking/SocketClient.ts
 import { io, Socket } from "socket.io-client";
-import { Stone } from "../board/GoBoard";
+import { Stone } from "../board/Board";
 
-interface StoneMove {
+export interface StoneMove {
   i: number;
   j: number;
   stone: Stone;
@@ -10,17 +11,21 @@ interface StoneMove {
 
 export class SocketClient {
   private socket: Socket;
+  // Callback to notify when a stone move is received from the network.
+  public onStoneMove: ((move: StoneMove) => void) | null = null;
 
   constructor() {
-    // Now we're importing io correctly from the 'socket.io-client' package.
-    this.socket = io(); // You can pass options or a URL if necessary.
+    // Create the socket connection (pass URL/options if needed).
+    this.socket = io();
     this.registerListeners();
   }
 
   private registerListeners(): void {
     this.socket.on("stoneMove", (moveData: StoneMove) => {
       console.log("Received move via network:", moveData);
-      // You can add a callback or event emitter here to handle an incoming move.
+      if (this.onStoneMove) {
+        this.onStoneMove(moveData);
+      }
     });
 
     this.socket.on("yourUsername", (username: string) => {
@@ -43,8 +48,8 @@ export class SocketClient {
     });
   }
 
-  broadcastStoneMove(i: number, j: number, stone: Stone, nextPlayer: Stone): void {
-    const moveData = { i, j, stone, currentPlayer: nextPlayer };
+  public broadcastStoneMove(i: number, j: number, stone: Stone, nextPlayer: Stone): void {
+    const moveData: StoneMove = { i, j, stone, currentPlayer: nextPlayer };
     this.socket.emit("stoneMove", moveData);
   }
 }

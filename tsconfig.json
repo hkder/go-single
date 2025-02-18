@@ -1,15 +1,17 @@
 {
   "compilerOptions": {
-    "target": "ES6",
-    "module": "NodeNext",
+    "noImplicitAny": true,
+    "module": "es6",
+    "target": "es5",
+    "jsx": "react",
+    "allowJs": true,
     "strict": true,
     "sourceMap": true,
     "rootDir": "./src",
     "outDir": "./public",
-    "noImplicitAny": true,
     "removeComments": true,
-    "moduleResolution": "nodenext"
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": ["src/**/*.ts"]
 }
