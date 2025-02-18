@@ -38,7 +38,7 @@ export class BoardRenderer {
 
     // Clear and draw background.
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    this.ctx.fillStyle = "#f5deb3";
+    this.ctx.fillStyle = "#f5deb3"; // Wooden board color.
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     // Draw grid lines.
@@ -55,6 +55,9 @@ export class BoardRenderer {
       this.ctx.lineTo(this.canvas.width - margin, pos);
       this.ctx.stroke();
     }
+
+    // Draw star points (hoshi) for standard board sizes.
+    this.drawStarPoints();
 
     // Draw stones.
     for (let i = 0; i < this.board.boardSize; i++) {
@@ -84,6 +87,57 @@ export class BoardRenderer {
     }
   }
 
+  /**
+   * Draw star points (hoshi) on standard board sizes (9, 13, or 19).
+   */
+  private drawStarPoints(): void {
+    const boardSize = this.board.boardSize;
+    if (boardSize !== 9 && boardSize !== 13 && boardSize !== 19) {
+      return;
+    }
+    const margin = this.getMargin();
+    const cellSize =
+      (this.canvas.width - 2 * margin) / (this.board.boardSize - 1);
+
+    let points: { i: number; j: number }[] = [];
+    if (boardSize === 19) {
+      points = [
+        { i: 3, j: 3 },
+        { i: 3, j: 9 },
+        { i: 3, j: 15 },
+        { i: 9, j: 3 },
+        { i: 9, j: 15 },
+        { i: 15, j: 3 },
+        { i: 15, j: 9 },
+        { i: 15, j: 15 },
+      ];
+    } else if (boardSize === 13) {
+      points = [
+        { i: 3, j: 3 },
+        { i: 3, j: 9 },
+        { i: 9, j: 3 },
+        { i: 9, j: 9 },
+      ];
+    } else if (boardSize === 9) {
+      points = [
+        { i: 2, j: 2 },
+        { i: 2, j: 6 },
+        { i: 6, j: 2 },
+        { i: 6, j: 6 },
+      ];
+    }
+
+    this.ctx.fillStyle = "#000";
+    points.forEach(point => {
+      const x = margin + point.i * cellSize;
+      const y = margin + point.j * cellSize;
+      const radius = 3;
+      this.ctx.beginPath();
+      this.ctx.arc(x, y, radius, 0, 2 * Math.PI);
+      this.ctx.fill();
+    });
+  }
+
   private drawStone(i: number, j: number, stone: Stone): void {
     const margin = this.getMargin();
     const cellSize =
@@ -91,9 +145,15 @@ export class BoardRenderer {
     const x = margin + i * cellSize;
     const y = margin + j * cellSize;
     const radius = cellSize / 2 - 2;
+
     this.ctx.beginPath();
     this.ctx.arc(x, y, radius, 0, 2 * Math.PI);
-    this.ctx.fillStyle = stone === Stone.Black ? "#000" : "#fff";
+    // Optionally add a radial gradient for a more realistic stone appearance.
+    if (stone === Stone.Black) {
+      this.ctx.fillStyle = "#000";
+    } else {
+      this.ctx.fillStyle = "#fff";
+    }
     this.ctx.fill();
     this.ctx.strokeStyle = "#000";
     this.ctx.stroke();

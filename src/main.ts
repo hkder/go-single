@@ -37,6 +37,11 @@ if (savedCurrentGameStr) {
   try {
     const gameState = JSON.parse(savedCurrentGameStr);
     if (gameState.boardSize && gameState.grid && gameState.moveHistory !== undefined) {
+      // If the saved game board size does not match the current Board,
+      // update the BoardStateManager to use the saved game's board size.
+      if (gameState.boardSize !== boardStateManager.getCurrentBoard().boardSize) {
+        boardStateManager.setCurrentBoard(gameState.boardSize);
+      }
       GameStorage.loadGame(gameState, boardStateManager.getCurrentBoard());
       boardSizeSelect.value = gameState.boardSize.toString();
       renderer.setBoard(boardStateManager.getCurrentBoard());
@@ -94,40 +99,9 @@ function redraw(): void {
   saveCurrentGame();
 }
 
-// Canvas click handler.
-// canvas.addEventListener("click", (event: MouseEvent) => {
-//   const rect = canvas.getBoundingClientRect();
-//   const margin = canvas.width / (boardStateManager.getCurrentBoard().boardSize + 1);
-//   const cellSize = (canvas.width - 2 * margin) / (boardStateManager.getCurrentBoard().boardSize - 1);
-//   const x = event.clientX - rect.left;
-//   const y = event.clientY - rect.top;
-//   const i = Math.round((x - margin) / cellSize);
-//   const j = Math.round((y - margin) / cellSize);
-//   if (i < 0 || i >= boardStateManager.getCurrentBoard().boardSize || j < 0 || j >= boardStateManager.getCurrentBoard().boardSize) {
-//     return;
-//   }
-
-//   // Save the stone that will be placed (the current player's stone).
-//   const stoneToPlace = boardStateManager.getCurrentBoard().currentPlayer;
-//   const success = boardStateManager.getCurrentBoard().placeStone(i, j);
-//   if (!success) {
-//     alert("Invalid move. Only the last stone can be removed or suicide moves are not allowed.");
-//     return;
-//   }
-
-//   // temporary variable to get the current board.
-//   let currentBoard = boardStateManager.getCurrentBoard();
-
-//   // Broadcast the move over the network with the board size.
-//   if (syncManager.getIsOnline() && syncManager.getCurrentSyncTarget() !== null) {
-//     socketClient.broadcastStoneMove(i, j, stoneToPlace, currentBoard.currentPlayer, currentBoard.boardSize);
-//   }
-
-//   redraw();
-// });
-
 // Change board size.
 boardSizeSelect.addEventListener("change", () => {
+  console.log("Board size changed to", boardSizeSelect.value);
   const newBoardSize = parseInt(boardSizeSelect.value);
 
   // Save the current board state.
