@@ -3,7 +3,7 @@ import { Board, Stone } from "./board/Board";
 import { BoardRenderer } from "./rendering/BoardRenderer";
 import { GameStorage } from "./storage/GameStorage";
 import { EncryptionUtil } from "./encryption/CryptoUtils";
-// import { SocketClient, StoneMove } from "./networking/SocketClient";
+import { SocketClient, StoneMove } from "./networking/SocketClient";
 
 const PREDEFINED_PASSWORD = "mySecretPassword123";
 let savedGameIndexToDelete: number | null = null;
@@ -45,22 +45,27 @@ if (savedCurrentGameStr) {
 }
 
 // Create and initialize the SocketClient.
-// const socketClient = new SocketClient();
+const socketClient = new SocketClient();
+
+function isMoveAlreadyMade(i: number, j: number): boolean {
+  return board.moveHistory.some(move => move.i === i && move.j === j);
+}
 
 // When receiving a stone move from the network, apply it to the board.
-// socketClient.onStoneMove = (moveData: StoneMove) => {
-//   console.log("Processing incoming network move", moveData);
-//   // Optional: Validate that the move does not already exist in the move history.
-//   // For now, simply place the stone (if the spot is free).
-//   if (board.grid[moveData.i][moveData.j] === null) {
-//     // Set the stone and update the board's turn.
-//     board.grid[moveData.i][moveData.j] = moveData.stone;
-//     board.moveHistory.push({ i: moveData.i, j: moveData.j, stone: moveData.stone });
-//     board.currentPlayer = moveData.currentPlayer;
-//     renderer.drawBoard();
-//     updateScoreBoard();
-//   }
-// };
+socketClient.onStoneMove = (moveData: StoneMove) => {
+  console.log("Processing incoming network move", moveData);
+
+  // Validate the move is not already in the move history.
+  if (isMoveAlreadyMade(moveData.i, moveData.j)) {
+    alert("This move has already been made.");
+    return;
+  }
+
+  if (board.placeStone(moveData.i, moveData.j)) {
+    renderer.drawBoard();
+    updateScoreBoard();
+  }
+};
 
 function updateScoreBoard(): void {
   blackScoreElem.textContent = board.blackScore.toString();
@@ -97,7 +102,7 @@ canvas.addEventListener("click", (event: MouseEvent) => {
     return;
   }
   // Broadcast the move over the network.
-  // socketClient.broadcastStoneMove(i, j, stoneToPlace, board.currentPlayer);
+  socketClient.broadcastStoneMove(i, j, stoneToPlace, board.currentPlayer);
   redraw();
 });
 
