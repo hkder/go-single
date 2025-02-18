@@ -43,10 +43,10 @@ Webpack will bundle your application (starting from `./src/main.ts`) and output 
 
 ## Running the Application
 
-Once you have built the project, you can start the server to run the application. For example, if your server file is named `server.ts`, you can run:
+Once you have built the project, you can start the server to run the application.
 
 ```bash
-node server.ts
+npm start
 ```
 
 By default, the server will be available at [http://localhost:3000](http://localhost:3000). Open this URL in your browser to start playing!
