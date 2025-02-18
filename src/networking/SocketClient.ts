@@ -3,6 +3,7 @@ import { io, Socket } from "socket.io-client";
 import { Stone } from "../board/Board";
 
 export interface StoneMove {
+  boardSize: number;
   i: number;
   j: number;
   stone: Stone;
@@ -48,8 +49,8 @@ export class SocketClient {
     });
   }
 
-  public broadcastStoneMove(i: number, j: number, stone: Stone, nextPlayer: Stone): void {
-    const moveData: StoneMove = { i, j, stone, currentPlayer: nextPlayer };
+  public broadcastStoneMove(i: number, j: number, stone: Stone, nextPlayer: Stone, boardSize: number): void {
+    const moveData: StoneMove = { boardSize, i, j, stone, currentPlayer: nextPlayer };
     this.socket.emit("stoneMove", moveData);
   }
 }

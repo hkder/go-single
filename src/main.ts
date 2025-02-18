@@ -55,12 +55,35 @@ function isMoveAlreadyMade(i: number, j: number): boolean {
 socketClient.onStoneMove = (moveData: StoneMove) => {
   console.log("Processing incoming network move", moveData);
 
+  //
+  // If the move's board size doesn't match the current board,
+  // it means the other player is using a different board size.
+  // Update the board state that matches the board
+  //
+  if (moveData.boardSize !== board.boardSize) {
+    if (boardStates[moveData.boardSize]) {
+      boardStates[moveData.boardSize].placeStone(moveData.i, moveData.j);
+    }
+    return;
+  }
+
+  // move's board size matches the current board, so we can process the move.
+  if (boardStates[moveData.boardSize]) {
+    board = boardStates[moveData.boardSize];
+  } else {
+    board = new Board(moveData.boardSize);
+    boardStates[moveData.boardSize] = board;
+  }
+  boardSizeSelect.value = moveData.boardSize.toString();
+  renderer.setBoard(board);
+
   // Validate the move is not already in the move history.
   if (isMoveAlreadyMade(moveData.i, moveData.j)) {
     alert("This move has already been made.");
     return;
   }
 
+  // Attempt to place the stone.
   if (board.placeStone(moveData.i, moveData.j)) {
     renderer.drawBoard();
     updateScoreBoard();
@@ -101,8 +124,8 @@ canvas.addEventListener("click", (event: MouseEvent) => {
     alert("Invalid move. Only the last stone can be removed or suicide moves are not allowed.");
     return;
   }
-  // Broadcast the move over the network.
-  socketClient.broadcastStoneMove(i, j, stoneToPlace, board.currentPlayer);
+  // Broadcast the move over the network with the board size.
+  socketClient.broadcastStoneMove(i, j, stoneToPlace, board.currentPlayer, board.boardSize);
   redraw();
 });
 
