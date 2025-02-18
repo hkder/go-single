@@ -17,46 +17,62 @@ app.use(express.static('public'));
 
 io.on('connection', (socket: Socket) => {
   console.log('New client connected: ' + socket.id);
-  // Assign a temporary username.
-  const username = 'User_' + socket.id.substring(0, 4);
-  users[socket.id] = username;
-  
-  // Notify this client of its username.
-  socket.emit('yourUsername', username);
-  
-  // Broadcast updated user list to all clients (each entry now includes socket id).
-  const userList = Object.entries(users).map(([id, username]) => ({ id, username }));
-  io.emit('updateUsers', userList);
 
-  // Handle stone moves.
+  // Listen for the goOnline event to mark the user as online.
+  socket.on('goOnline', () => {
+    const username = socket.id.substring(0, 4);
+    users[socket.id] = username;
+
+    // Notify this client of its username.
+    socket.emit('yourUsername', username);
+
+    // Broadcast updated user list to all online clients.
+    const userList = Object.entries(users).map(([id, username]) => ({ id, username }));
+    io.emit('updateUsers', userList);
+    console.log(`User ${socket.id} is now online as ${username}`);
+  });
+
+  // Listen for the goOffline event to mark the user as offline.
+  socket.on('goOffline', () => {
+    if (users[socket.id]) {
+      console.log(`User ${socket.id} going offline`);
+      delete users[socket.id];
+      const updatedUserList = Object.entries(users).map(([id, username]) => ({ id, username }));
+      io.emit('updateUsers', updatedUserList);
+    }
+  });
+
+  // Handle other events as usual...
   socket.on('stoneMove', (data: any) => {
     console.log('Received stone move:', data);
-    // Broadcast the stone move to all other clients.
     socket.broadcast.emit('stoneMove', data);
   });
 
-  // Handle sync requests.
   socket.on('syncRequest', (data: { targetId: string, boardSize: number }) => {
     console.log(`Sync request from ${socket.id} to ${data.targetId} for board size ${data.boardSize}`);
     const fromUsername = users[socket.id];
-    // Forward the sync request to the chosen target.
-    io.to(data.targetId).emit('syncRequest', { fromSocket: socket.id, fromUsername, boardSize: data.boardSize });
+    io.to(data.targetId).emit('syncRequestReceived', { fromSocket: socket.id, fromUsername, boardSize: data.boardSize });
   });
 
-  // Handle sync acceptance (including board information and chosen sync color).
-  socket.on('syncAccept', (data: { toSocket: string, boardState: any, boardColor: string }) => {
+  socket.on('syncAccept', (data: { toSocket: string, boardState: any }) => {
     console.log(`Sync accepted by ${socket.id} toward ${data.toSocket}`);
-    // Forward the accepted sync info (board info and color) to the original requester.
-    io.to(data.toSocket).emit('syncAccept', { fromSocket: socket.id, boardState: data.boardState, boardColor: data.boardColor });
-    // Also notify the accepting client about the sync.
-    socket.emit('syncAccepted', { toSocket: data.toSocket, boardColor: data.boardColor });
+    const fromUsername = users[socket.id];
+    io.to(data.toSocket).emit('syncAccepted', { fromSocket: socket.id, fromUsername, boardState: data.boardState });
+  });
+
+  socket.on(`syncFinalAck`, (data: { toSocket: string }) => {
+    console.log(`Sync accepted final ack from ${socket.id} toward ${data.toSocket}`);
+    const fromUsername = users[socket.id];
+    io.to(data.toSocket).emit(`syncAcceptedFinalAck`, { fromSocket: socket.id, fromUsername });
   });
 
   socket.on('disconnect', () => {
     console.log('Client disconnected: ' + socket.id);
-    delete users[socket.id];
-    const updatedUserList = Object.entries(users).map(([id, username]) => ({ id, username }));
-    io.emit('updateUsers', updatedUserList);
+    if (users[socket.id]) {
+      delete users[socket.id];
+      const updatedUserList = Object.entries(users).map(([id, username]) => ({ id, username }));
+      io.emit('updateUsers', updatedUserList);
+    }
   });
 });
 

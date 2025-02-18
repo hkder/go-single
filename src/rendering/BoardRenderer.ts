@@ -19,6 +19,12 @@ export class BoardRenderer {
 
   public setBoard(newBoard: Board): void {
     this.board = newBoard;
+
+    // Update the board size selector in the UI to match the board dimensions.
+    const boardSizeSelect = document.getElementById("boardSizeSelect") as HTMLSelectElement;
+    if (boardSizeSelect) {
+      boardSizeSelect.value = this.board.boardSize.toString();
+    }
   }
 
   private getMargin(): number {

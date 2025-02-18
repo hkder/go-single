@@ -5,6 +5,7 @@ import { GameStorage } from "./storage/GameStorage";
 import { EncryptionUtil } from "./encryption/CryptoUtils";
 import { SocketClient, StoneMove } from "./networking/SocketClient";
 import { SyncManager } from "./sync/SyncManager";
+import { BoardStateManager } from "./board/BoardStateManager";
 
 const PREDEFINED_PASSWORD = "mySecretPassword123";
 let savedGameIndexToDelete: number | null = null;
@@ -17,22 +18,18 @@ const turnIndicatorElem = document.getElementById("turnIndicator") as HTMLElemen
 const savedGamesContainer = document.getElementById("savedGames") as HTMLElement;
 const deleteModal = document.getElementById("deleteModal") as HTMLElement;
 
-// Declare a mapping to hold the board state for each board size.
-const boardStates: { [boardSize: number]: Board } = {};
-
-// Initialize the board from the board size select, or default to 19.
+// Create a BoardStateManager instance to manage board states.
 const defaultBoardSize = parseInt(boardSizeSelect.value) || 19;
-let board = new Board(defaultBoardSize);
-boardStates[defaultBoardSize] = board;
+const boardStateManager = new BoardStateManager(defaultBoardSize);
 
 // Initialize the renderer using the initial board.
-const renderer = new BoardRenderer(canvas, board);
+const renderer = new BoardRenderer(canvas, boardStateManager.getCurrentBoard());
 
 // Create and initialize the SocketClient.
 const socketClient = new SocketClient();
 
 // Initialize the sync manager.
-const syncManager = new SyncManager(socketClient.getSocket(), board, renderer);
+const syncManager = new SyncManager(socketClient.getSocket(), boardStateManager, renderer);
 
 // Auto-load the current game state if it exists.
 const savedCurrentGameStr = localStorage.getItem("goCurrentGame");
@@ -40,11 +37,9 @@ if (savedCurrentGameStr) {
   try {
     const gameState = JSON.parse(savedCurrentGameStr);
     if (gameState.boardSize && gameState.grid && gameState.moveHistory !== undefined) {
-      board = new Board(gameState.boardSize);
-      boardStates[gameState.boardSize] = board;
-      GameStorage.loadGame(gameState, board);
+      GameStorage.loadGame(gameState, boardStateManager.getCurrentBoard());
       boardSizeSelect.value = gameState.boardSize.toString();
-      renderer.setBoard(board);
+      renderer.setBoard(boardStateManager.getCurrentBoard());
     }
   } catch (e) {
     console.error("Error loading current game state:", e);
@@ -52,34 +47,23 @@ if (savedCurrentGameStr) {
 }
 
 function isMoveAlreadyMade(i: number, j: number): boolean {
-  return board.moveHistory.some(move => move.i === i && move.j === j);
+  return boardStateManager.getCurrentBoard().moveHistory.some(move => move.i === i && move.j === j);
 }
 
 // When receiving a stone move from the network, apply it to the board.
 socketClient.onStoneMove = (moveData: StoneMove) => {
   console.log("Processing incoming network move", moveData);
 
-  //
+  if (!syncManager.getIsOnline() || syncManager.getCurrentSyncTarget() === null) return;
+
   // If the move's board size doesn't match the current board,
-  // it means the other player is using a different board size.
-  // Update the board state that matches the board
-  //
-  if (moveData.boardSize !== board.boardSize) {
-    if (boardStates[moveData.boardSize]) {
-      boardStates[moveData.boardSize].placeStone(moveData.i, moveData.j);
-    }
+  // update the board state for that board size.
+  if (moveData.boardSize !== boardStateManager.getCurrentBoard().boardSize) {
+    // In Sync mode, we don't need to update the board state for the other board.
+    // const otherBoard = boardStateManager.getBoard(moveData.boardSize);
+    // otherBoard.placeStone(moveData.i, moveData.j);
     return;
   }
-
-  // move's board size matches the current board, so we can process the move.
-  if (boardStates[moveData.boardSize]) {
-    board = boardStates[moveData.boardSize];
-  } else {
-    board = new Board(moveData.boardSize);
-    boardStates[moveData.boardSize] = board;
-  }
-  boardSizeSelect.value = moveData.boardSize.toString();
-  renderer.setBoard(board);
 
   // Validate the move is not already in the move history.
   if (isMoveAlreadyMade(moveData.i, moveData.j)) {
@@ -87,53 +71,58 @@ socketClient.onStoneMove = (moveData: StoneMove) => {
     return;
   }
 
+  // Set the renderer board to the current board.
+  renderer.setBoard(boardStateManager.getCurrentBoard());
+
   // Attempt to place the stone.
-  if (board.placeStone(moveData.i, moveData.j)) {
+  if (boardStateManager.getCurrentBoard().placeStone(moveData.i, moveData.j)) {
     renderer.drawBoard();
     updateScoreBoard();
   }
 };
 
 function updateScoreBoard(): void {
-  blackScoreElem.textContent = board.blackScore.toString();
-  whiteScoreElem.textContent = board.whiteScore.toString();
+  blackScoreElem.textContent = boardStateManager.getCurrentBoard().blackScore.toString();
+  whiteScoreElem.textContent = boardStateManager.getCurrentBoard().whiteScore.toString();
   turnIndicatorElem.textContent =
-    board.currentPlayer === Stone.Black ? "Black" : "White";
+    boardStateManager.getCurrentBoard().currentPlayer === Stone.Black ? "Black" : "White";
 }
 
 function redraw(): void {
   renderer.drawBoard();
   updateScoreBoard();
   saveCurrentGame();
-
 }
 
 // Canvas click handler.
 canvas.addEventListener("click", (event: MouseEvent) => {
   const rect = canvas.getBoundingClientRect();
-  const margin = canvas.width / (board.boardSize + 1);
-  const cellSize = (canvas.width - 2 * margin) / (board.boardSize - 1);
+  const margin = canvas.width / (boardStateManager.getCurrentBoard().boardSize + 1);
+  const cellSize = (canvas.width - 2 * margin) / (boardStateManager.getCurrentBoard().boardSize - 1);
   const x = event.clientX - rect.left;
   const y = event.clientY - rect.top;
   const i = Math.round((x - margin) / cellSize);
   const j = Math.round((y - margin) / cellSize);
-  if (i < 0 || i >= board.boardSize || j < 0 || j >= board.boardSize) {
+  if (i < 0 || i >= boardStateManager.getCurrentBoard().boardSize || j < 0 || j >= boardStateManager.getCurrentBoard().boardSize) {
     return;
   }
 
   // Save the stone that will be placed (the current player's stone).
-  const stoneToPlace = board.currentPlayer;
-  const success = board.placeStone(i, j);
+  const stoneToPlace = boardStateManager.getCurrentBoard().currentPlayer;
+  const success = boardStateManager.getCurrentBoard().placeStone(i, j);
   if (!success) {
     alert("Invalid move. Only the last stone can be removed or suicide moves are not allowed.");
     return;
   }
 
+  // temporary variable to get the current board.
+  let currentBoard = boardStateManager.getCurrentBoard();
+
   // Broadcast the move over the network with the board size.
-  console.log("Sync manager is online:", syncManager.getIsOnline());
-  if (syncManager.getIsOnline()) {
-    socketClient.broadcastStoneMove(i, j, stoneToPlace, board.currentPlayer, board.boardSize);
+  if (syncManager.getIsOnline() && syncManager.getCurrentSyncTarget() !== null) {
+    socketClient.broadcastStoneMove(i, j, stoneToPlace, currentBoard.currentPlayer, currentBoard.boardSize);
   }
+
   redraw();
 });
 
@@ -142,18 +131,13 @@ boardSizeSelect.addEventListener("change", () => {
   const newBoardSize = parseInt(boardSizeSelect.value);
 
   // Save the current board state.
-  boardStates[board.boardSize] = board;
+  boardStateManager.setCurrentBoard(newBoardSize);
 
-  // Retrieve an existing board for the new board size or create a new one.
-  if (boardStates[newBoardSize]) {
-    board = boardStates[newBoardSize];
-  } else {
-    board = new Board(newBoardSize);
-    boardStates[newBoardSize] = board;
-  }
+  // Update the sync manager's board reference.
+  syncManager.setCurrentBoard(boardStateManager.getBoard(newBoardSize));
 
   // Update the renderer's board reference.
-  renderer.setBoard(board);
+  renderer.setBoard(boardStateManager.getCurrentBoard());
   redraw();
 });
 
@@ -166,7 +150,7 @@ function populateSavedGames(): void {
     btn.textContent = game.name ? game.name : `Saved Game ${index + 1}`;
     btn.style.width = "100%";
     btn.addEventListener("click", () => {
-      GameStorage.loadGame(game, board);
+      GameStorage.loadGame(game, boardStateManager.getCurrentBoard());
       redraw();
     });
     btn.addEventListener("contextmenu", (event: MouseEvent) => {
@@ -201,15 +185,15 @@ function hideDeleteModal(): void {
 });
 
 (document.getElementById("saveGameBtn") as HTMLButtonElement).addEventListener("click", () => {
-  GameStorage.saveGame(board);
+  GameStorage.saveGame(boardStateManager.getCurrentBoard());
   populateSavedGames();
 });
 
 (document.getElementById("clearGameBtn") as HTMLButtonElement).addEventListener("click", () => {
-  board.initBoard();
-  board.currentPlayer = Stone.Black;
-  board.blackScore = 0;
-  board.whiteScore = 0;
+  boardStateManager.getCurrentBoard().initBoard();
+  boardStateManager.getCurrentBoard().currentPlayer = Stone.Black;
+  boardStateManager.getCurrentBoard().blackScore = 0;
+  boardStateManager.getCurrentBoard().whiteScore = 0;
   localStorage.removeItem("goCurrentGame");
   redraw();
 });
@@ -223,13 +207,13 @@ function hideDeleteModal(): void {
 async function exportGameToFile(): Promise<void> {
   const timestamp = new Date().toISOString();
   const gameState = {
-    name: `Go ${board.boardSize}x${board.boardSize} - ${new Date().toLocaleString()}`,
-    boardSize: board.boardSize,
-    grid: board.grid,
-    currentPlayer: board.currentPlayer,
-    blackScore: board.blackScore,
-    whiteScore: board.whiteScore,
-    moveHistory: board.moveHistory,
+    name: `Go ${boardStateManager.getCurrentBoard().boardSize}x${boardStateManager.getCurrentBoard().boardSize} - ${new Date().toLocaleString()}`,
+    boardSize: boardStateManager.getCurrentBoard().boardSize,
+    grid: boardStateManager.getCurrentBoard().grid,
+    currentPlayer: boardStateManager.getCurrentBoard().currentPlayer,
+    blackScore: boardStateManager.getCurrentBoard().blackScore,
+    whiteScore: boardStateManager.getCurrentBoard().whiteScore,
+    moveHistory: boardStateManager.getCurrentBoard().moveHistory,
     timestamp: timestamp,
   };
   const jsonString = JSON.stringify(gameState, null, 2);
@@ -239,7 +223,7 @@ async function exportGameToFile(): Promise<void> {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `go_game_${board.boardSize}x${board.boardSize}_${timestamp}.enc.json`;
+    a.download = `go_game_${boardStateManager.getCurrentBoard().boardSize}x${boardStateManager.getCurrentBoard().boardSize}_${timestamp}.enc.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -263,7 +247,7 @@ async function importGameFromFile(file: File): Promise<void> {
       savedGames.push(gameState);
       localStorage.setItem("goSavedGames", JSON.stringify(savedGames));
       populateSavedGames();
-      GameStorage.loadGame(gameState, board);
+      GameStorage.loadGame(gameState, boardStateManager.getCurrentBoard());
       redraw();
     } catch (err) {
       alert("Error loading or decrypting game file.");
@@ -290,12 +274,12 @@ async function importGameFromFile(file: File): Promise<void> {
 
 function saveCurrentGame(): void {
   const gameState = {
-    boardSize: board.boardSize,
-    grid: board.grid,
-    currentPlayer: board.currentPlayer,
-    blackScore: board.blackScore,
-    whiteScore: board.whiteScore,
-    moveHistory: board.moveHistory,
+    boardSize: boardStateManager.getCurrentBoard().boardSize,
+    grid: boardStateManager.getCurrentBoard().grid,
+    currentPlayer: boardStateManager.getCurrentBoard().currentPlayer,
+    blackScore: boardStateManager.getCurrentBoard().blackScore,
+    whiteScore: boardStateManager.getCurrentBoard().whiteScore,
+    moveHistory: boardStateManager.getCurrentBoard().moveHistory,
     timestamp: new Date().toISOString(),
   };
   localStorage.setItem("goCurrentGame", JSON.stringify(gameState));
