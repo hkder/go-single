@@ -4,6 +4,7 @@ import { BoardRenderer } from "./rendering/BoardRenderer";
 import { GameStorage } from "./storage/GameStorage";
 import { EncryptionUtil } from "./encryption/CryptoUtils";
 import { SocketClient, StoneMove } from "./networking/SocketClient";
+import { SyncManager } from "./sync/SyncManager";
 
 const PREDEFINED_PASSWORD = "mySecretPassword123";
 let savedGameIndexToDelete: number | null = null;
@@ -27,6 +28,12 @@ boardStates[defaultBoardSize] = board;
 // Initialize the renderer using the initial board.
 const renderer = new BoardRenderer(canvas, board);
 
+// Create and initialize the SocketClient.
+const socketClient = new SocketClient();
+
+// Initialize the sync manager.
+const syncManager = new SyncManager(socketClient.getSocket(), board, renderer);
+
 // Auto-load the current game state if it exists.
 const savedCurrentGameStr = localStorage.getItem("goCurrentGame");
 if (savedCurrentGameStr) {
@@ -43,9 +50,6 @@ if (savedCurrentGameStr) {
     console.error("Error loading current game state:", e);
   }
 }
-
-// Create and initialize the SocketClient.
-const socketClient = new SocketClient();
 
 function isMoveAlreadyMade(i: number, j: number): boolean {
   return board.moveHistory.some(move => move.i === i && move.j === j);
@@ -124,8 +128,12 @@ canvas.addEventListener("click", (event: MouseEvent) => {
     alert("Invalid move. Only the last stone can be removed or suicide moves are not allowed.");
     return;
   }
+
   // Broadcast the move over the network with the board size.
-  socketClient.broadcastStoneMove(i, j, stoneToPlace, board.currentPlayer, board.boardSize);
+  console.log("Sync manager is online:", syncManager.getIsOnline());
+  if (syncManager.getIsOnline()) {
+    socketClient.broadcastStoneMove(i, j, stoneToPlace, board.currentPlayer, board.boardSize);
+  }
   redraw();
 });
 

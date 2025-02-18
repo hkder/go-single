@@ -21,6 +21,10 @@ export class SocketClient {
     this.registerListeners();
   }
 
+  public getSocket(): Socket {
+    return this.socket;
+  }
+
   private registerListeners(): void {
     this.socket.on("stoneMove", (moveData: StoneMove) => {
       console.log("Received move via network:", moveData);
