@@ -1,5 +1,7 @@
 # Go Game
 
+![Main Screen](main_screen.png)
+
 Welcome to **Go Game** – a modern, interactive implementation of the classic board game Go, built with TypeScript, Express, Webpack, and Socket.io.
 
 ## Overview
