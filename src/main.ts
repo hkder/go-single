@@ -95,36 +95,36 @@ function redraw(): void {
 }
 
 // Canvas click handler.
-canvas.addEventListener("click", (event: MouseEvent) => {
-  const rect = canvas.getBoundingClientRect();
-  const margin = canvas.width / (boardStateManager.getCurrentBoard().boardSize + 1);
-  const cellSize = (canvas.width - 2 * margin) / (boardStateManager.getCurrentBoard().boardSize - 1);
-  const x = event.clientX - rect.left;
-  const y = event.clientY - rect.top;
-  const i = Math.round((x - margin) / cellSize);
-  const j = Math.round((y - margin) / cellSize);
-  if (i < 0 || i >= boardStateManager.getCurrentBoard().boardSize || j < 0 || j >= boardStateManager.getCurrentBoard().boardSize) {
-    return;
-  }
+// canvas.addEventListener("click", (event: MouseEvent) => {
+//   const rect = canvas.getBoundingClientRect();
+//   const margin = canvas.width / (boardStateManager.getCurrentBoard().boardSize + 1);
+//   const cellSize = (canvas.width - 2 * margin) / (boardStateManager.getCurrentBoard().boardSize - 1);
+//   const x = event.clientX - rect.left;
+//   const y = event.clientY - rect.top;
+//   const i = Math.round((x - margin) / cellSize);
+//   const j = Math.round((y - margin) / cellSize);
+//   if (i < 0 || i >= boardStateManager.getCurrentBoard().boardSize || j < 0 || j >= boardStateManager.getCurrentBoard().boardSize) {
+//     return;
+//   }
 
-  // Save the stone that will be placed (the current player's stone).
-  const stoneToPlace = boardStateManager.getCurrentBoard().currentPlayer;
-  const success = boardStateManager.getCurrentBoard().placeStone(i, j);
-  if (!success) {
-    alert("Invalid move. Only the last stone can be removed or suicide moves are not allowed.");
-    return;
-  }
+//   // Save the stone that will be placed (the current player's stone).
+//   const stoneToPlace = boardStateManager.getCurrentBoard().currentPlayer;
+//   const success = boardStateManager.getCurrentBoard().placeStone(i, j);
+//   if (!success) {
+//     alert("Invalid move. Only the last stone can be removed or suicide moves are not allowed.");
+//     return;
+//   }
 
-  // temporary variable to get the current board.
-  let currentBoard = boardStateManager.getCurrentBoard();
+//   // temporary variable to get the current board.
+//   let currentBoard = boardStateManager.getCurrentBoard();
 
-  // Broadcast the move over the network with the board size.
-  if (syncManager.getIsOnline() && syncManager.getCurrentSyncTarget() !== null) {
-    socketClient.broadcastStoneMove(i, j, stoneToPlace, currentBoard.currentPlayer, currentBoard.boardSize);
-  }
+//   // Broadcast the move over the network with the board size.
+//   if (syncManager.getIsOnline() && syncManager.getCurrentSyncTarget() !== null) {
+//     socketClient.broadcastStoneMove(i, j, stoneToPlace, currentBoard.currentPlayer, currentBoard.boardSize);
+//   }
 
-  redraw();
-});
+//   redraw();
+// });
 
 // Change board size.
 boardSizeSelect.addEventListener("change", () => {
@@ -284,6 +284,73 @@ function saveCurrentGame(): void {
   };
   localStorage.setItem("goCurrentGame", JSON.stringify(gameState));
 }
+
+// Utility: get the accurate canvas coordinates from a mouse or touch event.
+function getCanvasCoordinates(e: MouseEvent | TouchEvent) {
+  const rect = canvas.getBoundingClientRect();
+  // Use touch or mouse coordinates
+  let clientX: number, clientY: number;
+  if (e instanceof TouchEvent) {
+    clientX = e.touches[0].clientX;
+    clientY = e.touches[0].clientY;
+  } else {
+    clientX = e.clientX;
+    clientY = e.clientY;
+  }
+  // Determine the displayed coordinate relative to the canvas top-left
+  const xDisplayed = clientX - rect.left;
+  const yDisplayed = clientY - rect.top;
+  // Scale factor to map from displayed size to canvas internal resolution
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  return {
+    x: xDisplayed * scaleX,
+    y: yDisplayed * scaleY
+  };
+}
+
+function handleCanvasInteraction(e: MouseEvent | TouchEvent) {
+  // Prevent default behavior for touch events to avoid unintended scrolling/zooming
+  e.preventDefault();
+
+  const { x, y } = getCanvasCoordinates(e);
+  const boardSize = boardStateManager.getCurrentBoard().boardSize;
+  const margin = canvas.width / (boardSize + 1);
+  const cellSize = (canvas.width - 2 * margin) / (boardSize - 1);
+  
+  const i = Math.round((x - margin) / cellSize);
+  const j = Math.round((y - margin) / cellSize);
+  
+  // Validate that the move is within bounds
+  if (i < 0 || i >= boardSize || j < 0 || j >= boardSize) {
+    return;
+  }
+
+  // Save the stone that will be placed (the current player's stone)
+  const stoneToPlace = boardStateManager.getCurrentBoard().currentPlayer;
+  const success = boardStateManager.getCurrentBoard().placeStone(i, j);
+  if (!success) {
+    alert("Invalid move. Only the last stone can be removed or suicide moves are not allowed.");
+    return;
+  }
+  
+  // Broadcast the move if online
+  if (syncManager.getIsOnline() && syncManager.getCurrentSyncTarget() !== null) {
+    const currentBoard = boardStateManager.getCurrentBoard();
+    socketClient.broadcastStoneMove(i, j, stoneToPlace, currentBoard.currentPlayer, currentBoard.boardSize);
+  }
+
+  redraw();
+}
+
+// Remove the old click listener and add a unified listener for both mouse and touch events.
+canvas.addEventListener("click", handleCanvasInteraction);
+canvas.addEventListener("touchstart", handleCanvasInteraction);
+
+// Also, add a CSS rule to the canvas to disable default touch actions:
+const styleElem = document.createElement("style");
+styleElem.textContent = `#goCanvas { touch-action: none; }`;
+document.head.appendChild(styleElem);
 
 populateSavedGames();
 redraw();

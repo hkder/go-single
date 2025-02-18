@@ -28,14 +28,46 @@
       scrollbar-width: thin;
       scrollbar-color: #c1c1c1 #f1f1f1;
     }
+
+    /* Fluid grid layout */
+    #gridContainer {
+      display: grid;
+      /* Default to one column on mobile */
+      grid-template-columns: 1fr;
+      grid-auto-rows: auto;
+      height: 100%;
+      width: 100%;
+    }
+
+    /* For medium and larger screens, use a five-column layout */
+    @media (min-width: 768px) {
+      #gridContainer {
+        grid-template-columns: 300px 1fr 800px 1fr 280px;
+      }
+      /* Adjust borders for a horizontal layout */
+      #leftPanel {
+        border-right: 1px solid #e5e7eb;
+        border-bottom: none;
+      }
+      #rightPanel {
+        border-left: 1px solid #e5e7eb;
+        border-top: none;
+      }
+    }
+
+    /* Responsive canvas: scale down on smaller screens but preserve the drawing resolution */
+    #middlePanel canvas {
+      width: 100%;
+      height: auto;
+      max-width: 800px;
+    }
   </style>
 </head>
 <body class="bg-gray-50 h-screen">
-  <!-- Grid layout with five columns: left panel, left spacer, fixed middle board (800x800), right spacer, right panel -->
-  <div id="gridContainer" class="grid h-full w-full" style="grid-template-columns: 300px 1fr 800px 1fr 280px;">
-    
+  <!-- Grid layout: components will stack on small screens and spread out on larger screens -->
+  <div id="gridContainer">
     <!-- Left Panel: Board Settings -->
-    <div id="leftPanel" class="bg-blue-50 p-4 border-r border-gray-200 overflow-y-auto min-h-0">
+    <div id="leftPanel" class="bg-blue-50 p-4 border-b border-gray-200 overflow-y-auto">
       <h2 class="text-xl font-semibold mb-4">Board Settings</h2>
       <div class="mb-4">
         <label for="boardSizeSelect" class="block text-sm font-medium text-gray-700 mb-1">Board Size</label>
@@ -60,19 +92,19 @@
       </div>
     </div>
     
-    <!-- Left Spacer -->
-    <div></div>
+    <!-- Left Spacer: Hidden on mobile -->
+    <div class="hidden md:block"></div>
     
-    <!-- Middle Panel: Go Board (fixed size 800x800, centered) -->
+    <!-- Middle Panel: Go Board -->
     <div id="middlePanel" class="flex justify-center items-center">
       <canvas id="goCanvas" width="800" height="800" class="shadow-lg rounded bg-yellow-50"></canvas>
     </div>
     
-    <!-- Right Spacer -->
-    <div></div>
+    <!-- Right Spacer: Hidden on mobile -->
+    <div class="hidden md:block"></div>
     
     <!-- Right Panel: Scoreboard, Connected Users, and Sync Options -->
-    <div id="rightPanel" class="bg-blue-50 p-4 border-l border-gray-200 overflow-y-auto min-h-0">
+    <div id="rightPanel" class="bg-blue-50 p-4 border-t border-gray-200 overflow-y-auto">
       <h2 class="text-xl font-semibold mb-4">Scoreboard</h2>
       <div class="mb-2 text-lg">
         <span class="font-medium">Black:</span> <span id="blackScore">0</span>
@@ -84,25 +116,21 @@
       <div id="turnIndicator" class="mb-4 text-lg text-blue-700 font-semibold">Black</div>
       <button id="toggleOrderBtn" class="w-full bg-purple-500 text-white py-2 px-4 rounded hover:bg-purple-600">Toggle Stone Order</button>
       
-      <!-- New Sync Options section -->
+      <!-- Sync Options -->
       <h2 class="text-xl font-semibold mt-8 mb-4">Sync Options</h2>
       <div class="space-y-4">
-        <!-- Mode selector for Online/Offline mode -->
         <select id="modeSelect" class="block w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
           <option value="offline">Offline</option>
           <option value="online">Online</option>
         </select>
-        <!-- Container for displaying connected users for syncing -->
         <div id="userListContainer" class="p-2 border border-gray-300 rounded bg-white min-h-[100px]">
           <!-- Dynamically populated with online clients -->
         </div>
-        <!-- Sync button with a beautiful gradient style -->
         <button id="syncButton" class="w-full bg-gradient-to-r from-green-400 to-blue-500 text-white py-2 px-4 rounded hover:from-green-500 hover:to-blue-600">
           Sync
         </button>
       </div>
       
-      <!-- Your Username element, moved below sync options and hidden by default -->
       <div id="usernameContainer" class="mt-4 p-2 bg-gray-100 rounded hidden">
         <strong>Your Username: </strong><span id="myUsername"></span>
       </div>
