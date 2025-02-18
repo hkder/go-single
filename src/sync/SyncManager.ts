@@ -75,7 +75,9 @@ export class SyncManager {
   private registerSocketEvents(): void {
     // Update the connected user list.
     this.socket.on("updateUsers", (users: Array<{ id: string; username: string }>) => {
-      this.populateUserList(users);
+      // no need to show myself
+      const filteredUsers = users.filter(user => user.id !== this.socket.id);
+      this.populateUserList(filteredUsers);
     });
 
     // Handle an incoming sync request.

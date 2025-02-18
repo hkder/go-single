@@ -39,18 +39,6 @@ export class SocketClient {
         myUsernameEl.textContent = username;
       }
     });
-
-    this.socket.on("updateUsers", (userList: string[]) => {
-      const userListEl = document.getElementById("userList");
-      if (userListEl) {
-        userListEl.innerHTML = "";
-        userList.forEach((username: string) => {
-          const li = document.createElement("li");
-          li.textContent = username;
-          userListEl.appendChild(li);
-        });
-      }
-    });
   }
 
   public broadcastStoneMove(i: number, j: number, stone: Stone, nextPlayer: Stone, boardSize: number): void {
