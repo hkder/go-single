@@ -16,8 +16,33 @@ const turnIndicatorElem = document.getElementById("turnIndicator") as HTMLElemen
 const savedGamesContainer = document.getElementById("savedGames") as HTMLElement;
 const deleteModal = document.getElementById("deleteModal") as HTMLElement;
 
-const board = new Board(19);
+// Declare a mapping to hold the board state for each board size.
+const boardStates: { [boardSize: number]: Board } = {};
+
+// Initialize the board from the board size select, or default to 19.
+const defaultBoardSize = parseInt(boardSizeSelect.value) || 19;
+let board = new Board(defaultBoardSize);
+boardStates[defaultBoardSize] = board;
+
+// Initialize the renderer using the initial board.
 const renderer = new BoardRenderer(canvas, board);
+
+// Auto-load the current game state if it exists.
+const savedCurrentGameStr = localStorage.getItem("goCurrentGame");
+if (savedCurrentGameStr) {
+  try {
+    const gameState = JSON.parse(savedCurrentGameStr);
+    if (gameState.boardSize && gameState.grid && gameState.moveHistory !== undefined) {
+      board = new Board(gameState.boardSize);
+      boardStates[gameState.boardSize] = board;
+      GameStorage.loadGame(gameState, board);
+      boardSizeSelect.value = gameState.boardSize.toString();
+      renderer.setBoard(board);
+    }
+  } catch (e) {
+    console.error("Error loading current game state:", e);
+  }
+}
 
 // Create and initialize the SocketClient.
 // const socketClient = new SocketClient();
@@ -47,6 +72,8 @@ function updateScoreBoard(): void {
 function redraw(): void {
   renderer.drawBoard();
   updateScoreBoard();
+  saveCurrentGame();
+
 }
 
 // Canvas click handler.
@@ -77,15 +104,20 @@ canvas.addEventListener("click", (event: MouseEvent) => {
 // Change board size.
 boardSizeSelect.addEventListener("change", () => {
   const newBoardSize = parseInt(boardSizeSelect.value);
-  // (Optionally, you can store the current board state per board size.)
-  const newBoard = new Board(newBoardSize);
-  // Update the global board.
-  board.boardSize = newBoard.boardSize;
-  board.grid = newBoard.grid;
-  board.moveHistory = newBoard.moveHistory;
-  board.currentPlayer = newBoard.currentPlayer;
-  board.blackScore = newBoard.blackScore;
-  board.whiteScore = newBoard.whiteScore;
+
+  // Save the current board state.
+  boardStates[board.boardSize] = board;
+
+  // Retrieve an existing board for the new board size or create a new one.
+  if (boardStates[newBoardSize]) {
+    board = boardStates[newBoardSize];
+  } else {
+    board = new Board(newBoardSize);
+    boardStates[newBoardSize] = board;
+  }
+
+  // Update the renderer's board reference.
+  renderer.setBoard(board);
   redraw();
 });
 
@@ -142,6 +174,7 @@ function hideDeleteModal(): void {
   board.currentPlayer = Stone.Black;
   board.blackScore = 0;
   board.whiteScore = 0;
+  localStorage.removeItem("goCurrentGame");
   redraw();
 });
 
@@ -210,6 +243,27 @@ async function importGameFromFile(file: File): Promise<void> {
     importGameFromFile(files[0]);
   }
 });
+
+// Add listener to delete all saved games.
+(document.getElementById("deleteAllGamesBtn") as HTMLButtonElement)?.addEventListener("click", () => {
+  if (confirm("Are you sure you want to delete all saved games?")) {
+    localStorage.removeItem("goSavedGames");
+    populateSavedGames();
+  }
+});
+
+function saveCurrentGame(): void {
+  const gameState = {
+    boardSize: board.boardSize,
+    grid: board.grid,
+    currentPlayer: board.currentPlayer,
+    blackScore: board.blackScore,
+    whiteScore: board.whiteScore,
+    moveHistory: board.moveHistory,
+    timestamp: new Date().toISOString(),
+  };
+  localStorage.setItem("goCurrentGame", JSON.stringify(gameState));
+}
 
 populateSavedGames();
 redraw();

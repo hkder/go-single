@@ -7,7 +7,7 @@ const __dirname = path.dirname(__filename);
 
 export default {
   mode: 'production', // Change to 'production' for production builds.
-  entry: './src/Main.ts', // Your client entry point.
+  entry: './src/main.ts', // Your client entry point.
   output: {
     filename: 'main.js', // The bundled file name.
     path: path.resolve(__dirname, 'public'), // Output directory.

@@ -17,6 +17,10 @@ export class BoardRenderer {
     this.board = board;
   }
 
+  public setBoard(newBoard: Board): void {
+    this.board = newBoard;
+  }
+
   private getMargin(): number {
     return this.canvas.width / (this.board.boardSize + 1);
   }
